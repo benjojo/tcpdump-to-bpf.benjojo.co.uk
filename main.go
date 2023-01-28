@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/ghedo/go.pkt/packet"
 )
@@ -13,8 +14,11 @@ import (
 var IndexPage string
 
 func main() {
+	httpHandler := http.NewServeMux()
+	httpHandler.HandleFunc("/", redirect)
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	httpsserver := http.NewServeMux()
+	httpsserver.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
@@ -22,7 +26,7 @@ func main() {
 		w.Write([]byte(IndexPage))
 	})
 
-	http.HandleFunc("/compile", func(w http.ResponseWriter, r *http.Request) {
+	httpsserver.HandleFunc("/compile", func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		o := WebsiteResp{}
 		d, err := compileBPF(r.Form.Get("target"), r.Form.Get("link"))
@@ -35,7 +39,21 @@ func main() {
 		json.NewEncoder(w).Encode(o)
 	})
 
-	http.ListenAndServe(":80", nil)
+	hserver := &http.Server{
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 300 * time.Second,
+		IdleTimeout:  120 * time.Second,
+		Handler:      httpsserver,
+		Addr:         ":443",
+	}
+
+	setupSSLConfig(hserver, httpsserver)
+	go http.ListenAndServe(":80", httpHandler)
+
+	err := hserver.ListenAndServeTLS("", "")
+	if err != nil {
+		log.Fatalf("httpsSrv.ListendAndServeTLS() failed with %s", err)
+	}
 }
 
 func compileBPF(filterString string, linkType string) (o FullyCompiledFilter, err error) {
