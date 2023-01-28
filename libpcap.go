@@ -210,7 +210,7 @@ func (f FullFilter) ToIptables() string {
 		command = "ip6tables -I INPUT"
 	}
 
-	return fmt.Sprintf("# %v -m bpf --bytecode \"%v\" -j DROP -m --comment \"%v\"", command, sb.String(), trimedFilter)
+	return fmt.Sprintf("# %v -m bpf --bytecode \"%v\" -j DROP -m comment --comment \"%v\"", command, sb.String(), trimedFilter)
 }
 
 /*
