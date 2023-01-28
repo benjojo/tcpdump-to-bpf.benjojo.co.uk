@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -47,9 +48,15 @@ func main() {
 		Addr:         ":443",
 	}
 
-	setupSSLConfig(hserver, httpsserver)
-	go http.ListenAndServe(":80", httpHandler)
+	hl := setupSSLConfig(hserver, httpHandler)
+	go func() {
+		s := &http.Server{
+			Handler: hl,
+			Addr:    fmt.Sprintf(":%d", 80),
+		}
 
+		go s.ListenAndServe()
+	}()
 	err := hserver.ListenAndServeTLS("", "")
 	if err != nil {
 		log.Fatalf("httpsSrv.ListendAndServeTLS() failed with %s", err)
